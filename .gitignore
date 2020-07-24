@@ -1,0 +1,9 @@
+*.pyc
+*.logs
+
+#Ingore Certificates
+*.pem
+*.crt
+*.cer
+*.key
+*.csr
