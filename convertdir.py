@@ -1,3 +1,4 @@
+#! /usr/bin/python
 import M2Crypto
 import re,os
 import pysvn
@@ -27,13 +28,14 @@ def getdnsnames(crtstring):
     dnsnames.append('Crt-File in dmz-crt Not Found')
     return dnsnames[0]
 
-def svncommit(filename):
+def svncommit(file_path):
 	svnadd = list()
-	svnadd.append(path_crt + filename)
-	for line in svnadd:
-		client.add(line)
+	svnadd.append(file_path)
+	if not os.path.exists(file_path):
+		for line in svnadd:
+			client.add(line)
 
-	client.checkin(svnadd, "+ " + domainname + "\n ueber createcrt-bot") 
+	client.checkin(svnadd, "+ " + file_path + "\n ueber createcrt-bot") 
 
 
 for r, d, f in os.walk(os.getcwd()):
@@ -58,7 +60,7 @@ for r, d, f in os.walk(os.getcwd()):
 
 			with open(path_repo + '/' + common_name + '/' + common_name + '.cer','w+') as f:
 			    f.write(crtstring+crtpem)
-			#svncommit(common_name +'.cer')
+			svncommit(path_repo + '/' + common_name + '/' + common_name + '.cer')
 
 			print(filename + " --> " + path_repo + '/' + common_name + '/' + common_name + '.cer')
 			os.remove(filename)
