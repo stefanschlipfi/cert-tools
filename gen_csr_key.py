@@ -1,3 +1,5 @@
+#! /usr/bin/python
+
 from OpenSSL import crypto
 import sys,re
 
@@ -79,22 +81,27 @@ if __name__ == "__main__":
     else:
         dns_names = sys.argv[1:]
     
-    obj = GenerateCsr_Key(dns_names)
-    
-    data = {}
-    csr = ""
     try:
-        import M2Crypto  
-    except ImportError:
-        csr = obj.csrpem
+        obj = GenerateCsr_Key(dns_names)
+    except Exception as e:
+        print(e)
+        print("dns_names: {0}".format(dns_names))
+    
     else:
-        Mcsr = M2Crypto.X509.load_request_string(obj.csrpem)
-        csr = Mcsr.as_text() + Mcsr.as_pem()
-    finally:
-        data['csr'] = csr
-        data['key'] = obj.keypem
+        data = {}
+        csr = ""
+        try:
+            import M2Crypto  
+        except ImportError:
+            csr = obj.csrpem
+        else:
+            Mcsr = M2Crypto.X509.load_request_string(obj.csrpem)
+            csr = Mcsr.as_text() + Mcsr.as_pem()
+        finally:
+            data['csr'] = csr
+            data['key'] = obj.keypem
 
-        for end,value in run_func(data.iteritems,data.items)():
-            with open(dns_names[0] + '.' + end,'w') as f:
-                f.write(value)
+            for end,value in run_func(data.iteritems,data.items)():
+                with open(dns_names[0] + '.' + end,'w') as f:
+                    f.write(value)
 
