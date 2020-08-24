@@ -1,4 +1,5 @@
 from OpenSSL import crypto
+import sys,re
 
 class GenerateCsr_Key():
     def __init__(self,dns_names):
@@ -6,6 +7,12 @@ class GenerateCsr_Key():
         @dns_names
         list with domains common_name is dns_names[0]
         """
+        if not isinstance(dns_names,list):
+            raise TypeError("dns_names must be a list")
+        for item in dns_names:
+            if not isinstance(item,str):
+                raise ValueError("dns_names items must be a string")
+        
         self.dns_names = dns_names
         req,key = self.generate()
 
@@ -49,3 +56,45 @@ class GenerateCsr_Key():
         key = crypto.PKey()
         key.generate_key(type, bits)
         return key
+
+if __name__ == "__main__":
+
+    def run_func(py2_func,py3_func):
+        """
+        run python2 or python3 function
+        """
+        if sys.version_info > (3,):
+            return py3_func
+        else:
+            return py2_func
+
+    if len(sys.argv) == 1:
+        while True:  
+            dns_names = run_func(raw_input,input)("Enter dns_names spererated by -d: ")
+            dns_names = re.split(',|-d',dns_names)
+            dns_names = [re.sub('\s','',item) for item in dns_names]
+            if isinstance(dns_names,list):
+                if len(dns_names) > 0 and not dns_names[0] == "":
+                    break
+    else:
+        dns_names = sys.argv[1:]
+    
+    obj = GenerateCsr_Key(dns_names)
+    
+    data = {}
+    csr = ""
+    try:
+        import M2Crypto  
+    except ImportError:
+        csr = obj.csrpem
+    else:
+        Mcsr = M2Crypto.X509.load_request_string(obj.csrpem)
+        csr = Mcsr.as_text() + Mcsr.as_pem()
+    finally:
+        data['csr'] = csr
+        data['key'] = obj.keypem
+
+        for end,value in run_func(data.iteritems,data.items)():
+            with open(dns_names[0] + '.' + end,'w') as f:
+                f.write(value)
+
