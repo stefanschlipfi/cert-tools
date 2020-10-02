@@ -2,9 +2,23 @@
 
 from OpenSSL import crypto
 import sys,re
+import json,os
 
-class GenerateCsr_Key():
+class ProgramPaths(object):
+
+    def __init__(self):
+        jsonlocation = './'
+        if not os.path.isfile(jsonlocation + 'certs.json'):
+            jsonlocation = '/etc/certs/'
+
+        with open(jsonlocation + "certs.json", 'r') as jfile:
+            json_file = json.load(jfile)
+        
+        self.json_file = json_file
+
+class GenerateCsr_Key(ProgramPaths):
     def __init__(self,dns_names):
+        super().__init__()
         """
         @dns_names
         list with domains common_name is dns_names[0]
@@ -21,17 +35,27 @@ class GenerateCsr_Key():
         self.keypem = crypto.dump_privatekey(crypto.FILETYPE_PEM, key)
         self.csrpem = crypto.dump_certificate_request(crypto.FILETYPE_PEM, req)
 
+    def load_openssl_settigs(self,req):
+        
+        openssl = self.json_file['openssl']
+
+        try:
+            req.get_subject().CN = self.dns_names[0]
+            req.get_subject().countryName = openssl["countryName"]
+            req.get_subject().stateOrProvinceName = openssl["stateOrProvinceName"]
+            req.get_subject().localityName =  openssl["localityName"]
+            req.get_subject().organizationName = openssl["organizationName"]
+            req.get_subject().organizationalUnitName = openssl["organizationalUnitName"]
+        except Exception as e:
+            raise e
+
+        return req
+
     def generate(self):
 
         TYPE_RSA = crypto.TYPE_RSA
         req = crypto.X509Req()
-
-        req.get_subject().CN = self.dns_names[0]
-        req.get_subject().countryName = "AT"
-        req.get_subject().stateOrProvinceName = "Wien"
-        req.get_subject().localityName =  "Wien"
-        req.get_subject().organizationName = "Stadt Wien"
-        req.get_subject().organizationalUnitName = "MA01"
+        req = self.load_openssl_settigs(req)
 
         sans = []
         for i in self.dns_names:
@@ -39,12 +63,12 @@ class GenerateCsr_Key():
         sans = ", ".join(sans)
 
         base_constraints = ([
-            crypto.X509Extension("keyUsage", False, "Digital Signature, Non Repudiation, Key Encipherment"),
-            crypto.X509Extension("basicConstraints", False, "CA:FALSE"),
+            crypto.X509Extension(b"keyUsage", False, b"Digital Signature, Non Repudiation, Key Encipherment"),
+            crypto.X509Extension(b"basicConstraints", False, b"CA:FALSE"),
         ])
         x509_extensions = base_constraints
 
-        san_constraint = crypto.X509Extension("subjectAltName", False, sans)
+        san_constraint = crypto.X509Extension(b"subjectAltName", False, sans.encode())
         x509_extensions.append(san_constraint)
         req.add_extensions(x509_extensions)
         key = self.generateKey(TYPE_RSA, 2048)
@@ -61,18 +85,9 @@ class GenerateCsr_Key():
 
 if __name__ == "__main__":
 
-    def run_func(py2_func,py3_func):
-        """
-        run python2 or python3 function
-        """
-        if sys.version_info > (3,):
-            return py3_func
-        else:
-            return py2_func
-
     if len(sys.argv) == 1:
         while True:  
-            dns_names = run_func(raw_input,input)("Enter dns_names spererated by -d: ")
+            dns_names = input("Enter dns_names spererated by -d: ")
             dns_names = re.split(',|-d',dns_names)
             dns_names = [re.sub('\s','',item) for item in dns_names]
             if isinstance(dns_names,list):
@@ -101,7 +116,7 @@ if __name__ == "__main__":
             data['csr'] = csr
             data['key'] = obj.keypem
 
-            for end,value in run_func(data.iteritems,data.items)():
-                with open(dns_names[0] + '.' + end,'w') as f:
+            for end,value in data.items():
+                with open(dns_names[0] + '.' + end,'wb') as f:
                     f.write(value)
 

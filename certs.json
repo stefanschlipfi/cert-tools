@@ -1,0 +1,14 @@
+{
+    "openssl":{
+        "countryName" : "AT",
+        "stateOrProvinceName": "Lower Austira",
+        "localityName": "Steinabruck 9",
+        "organizationName": "Schlipfinger",
+        "organizationalUnitName": "Schlipfinger",
+
+        "ca":{
+            "pem-file":"",
+            "days":"365"
+        }
+    }
+}
